@@ -14,6 +14,7 @@ import org.linlinjava.litemall.wx.dao.UserInfo;
 import org.linlinjava.litemall.wx.dao.UserToken;
 import org.linlinjava.litemall.wx.service.UserTokenManager;
 import org.linlinjava.litemall.wx.util.IpUtil;
+import org.linlinjava.litemall.wx.util.bcrypt.BCryptPasswordEncoder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +41,22 @@ public class WxAuthController {
 
     /**
      * 账号登录
+     *
+     * @param body 请求内容，{ username: xxx, password: xxx }
+     * @param request 请求对象
+     * @return 登录结果
+     *   成功则
+     *  {
+     *      errno: 0,
+     *      errmsg: '成功',
+     *      data:
+     *          {
+     *              token: xxx,
+     *              tokenExpire: xxx,
+     *              userInfo: xxx
+     *          }
+     *  }
+     *   失败则 { errno: XXX, errmsg: XXX }
      */
     @RequestMapping("login")
     public Object login(@RequestBody String body, HttpServletRequest request) {
@@ -60,8 +78,9 @@ public class WxAuthController {
             user = userList.get(0);
         }
 
-        if(!user.getPassword().equals(password)){
-            return ResponseUtil.badArgumentValue();
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        if(!encoder.matches(password, user.getPassword())){
+            return ResponseUtil.fail(403, "账号密码不对");
         }
 
         // userInfo
@@ -81,6 +100,22 @@ public class WxAuthController {
 
     /**
      * 微信登录
+     *
+     * @param body 请求内容，{ code: xxx, userInfo: xxx }
+     * @param request 请求对象
+     * @return 登录结果
+     *   成功则
+     *  {
+     *      errno: 0,
+     *      errmsg: '成功',
+     *      data:
+     *          {
+     *              token: xxx,
+     *              tokenExpire: xxx,
+     *              userInfo: xxx
+     *          }
+     *  }
+     *   失败则 { errno: XXX, errmsg: XXX }
      */
     @RequestMapping("login_by_weixin")
     public Object loginByWeixin(@RequestBody String body, HttpServletRequest request) {
@@ -125,12 +160,12 @@ public class WxAuthController {
             user.setGender(userInfo.getGender() == 1 ? "男" : "女");
             user.setUserLevel("普通用户");
             user.setStatus("可用");
-            user.setLastLoginTime(LocalDate.now());
+            user.setLastLoginTime(LocalDateTime.now());
             user.setLastLoginIp(IpUtil.client(request));
             userService.add(user);
         }
         else{
-            user.setLastLoginTime(LocalDate.now());
+            user.setLastLoginTime(LocalDateTime.now());
             user.setLastLoginIp(IpUtil.client(request));
             userService.update(user);
         }
@@ -147,6 +182,29 @@ public class WxAuthController {
 
     /**
      * 账号注册
+     *
+     * @param body 请求内容
+     *  {
+     *      username: xxx,
+     *      password: xxx,
+     *      mobile: xxx
+     *      code: xxx
+     *  }
+     *  其中code是手机验证码，目前还不支持手机短信验证码
+     * @param request 请求对象
+     * @return 登录结果
+     *   成功则
+     *  {
+     *      errno: 0,
+     *      errmsg: '成功',
+     *      data:
+     *          {
+     *              token: xxx,
+     *              tokenExpire: xxx,
+     *              userInfo: xxx
+     *          }
+     *  }
+     *   失败则 { errno: XXX, errmsg: XXX }
      */
     @PostMapping("register")
     public Object register(@RequestBody String body, HttpServletRequest request) {
@@ -168,11 +226,15 @@ public class WxAuthController {
         if(userList.size() > 0){
             return ResponseUtil.fail(403, "手机号已注册");
         }
-
         LitemallUser user = new LitemallUser();
+
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        String encodedPassword = encoder.encode(password);
+        user.setPassword(encodedPassword);
+
         user = new LitemallUser();
         user.setUsername(username);
-        user.setPassword(password);
+        user.setPassword(encodedPassword);
         user.setMobile(mobile);
         user.setWeixinOpenid("");
         user.setAvatar("https://yanxuan.nosdn.127.net/80841d741d7fa3073e0ae27bf487339f.jpg?imageView&quality=90&thumbnail=64x64");
@@ -180,7 +242,7 @@ public class WxAuthController {
         user.setGender("未知");
         user.setUserLevel("普通用户");
         user.setStatus("可用");
-        user.setLastLoginTime(LocalDate.now());
+        user.setLastLoginTime(LocalDateTime.now());
         user.setLastLoginIp(IpUtil.client(request));
         userService.add(user);
 
@@ -202,6 +264,18 @@ public class WxAuthController {
 
     /**
      * 账号密码重置
+     *
+     * @param body 请求内容
+     *  {
+     *      password: xxx,
+     *      mobile: xxx
+     *      code: xxx
+     *  }
+     *  其中code是手机验证码，目前还不支持手机短信验证码
+     * @param request 请求对象
+     * @return 登录结果
+     *   成功则 { errno: 0, errmsg: '成功' }
+     *   失败则 { errno: XXX, errmsg: XXX }
      */
     @PostMapping("reset")
     public Object reset(@RequestBody String body, HttpServletRequest request) {
@@ -225,7 +299,10 @@ public class WxAuthController {
             user = userList.get(0);
         }
 
-        user.setPassword(password);
+        BCryptPasswordEncoder encoder = new BCryptPasswordEncoder();
+        String encodedPassword = encoder.encode(password);
+        user.setPassword(encodedPassword);
+
         userService.update(user);
 
         return ResponseUtil.ok();

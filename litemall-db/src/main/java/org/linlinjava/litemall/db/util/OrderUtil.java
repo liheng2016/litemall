@@ -28,7 +28,7 @@ public class OrderUtil {
     public static final Short STATUS_PAY = 201;
     public static final Short STATUS_SHIP= 301;
     public static final Short STATUS_CONFIRM = 401;
-    public static final Short STATUS_CANCEL= 201;
+    public static final Short STATUS_CANCEL= 102;
     public static final Short STATUS_REFUND = 202;
     public static final Short STATUS_AUTO_CONFIRM= 402;
 
@@ -142,11 +142,11 @@ public class OrderUtil {
     }
 
 
-    public static boolean isPayStatus(LitemallOrder zmallOrder) {
-        return OrderUtil.STATUS_PAY == zmallOrder.getOrderStatus().shortValue();
+    public static boolean isPayStatus(LitemallOrder litemallOrder) {
+        return OrderUtil.STATUS_PAY == litemallOrder.getOrderStatus().shortValue();
     }
 
-    public static boolean isShipStatus(LitemallOrder zmallOrder) {
-        return OrderUtil.STATUS_SHIP == zmallOrder.getOrderStatus().shortValue();
+    public static boolean isShipStatus(LitemallOrder litemallOrder) {
+        return OrderUtil.STATUS_SHIP == litemallOrder.getOrderStatus().shortValue();
     }
 }
